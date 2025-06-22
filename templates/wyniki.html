@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8" />
+    <title>Wyniki ankiety</title>
+    <meta http-equiv="refresh" content="15">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+        h2 {
+            margin-bottom: 30px;
+        }
+        canvas {
+            max-width: 600px;
+            margin: 20px auto;
+            display: block;
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        button#downloadExcel {
+            margin-top: 20px;
+            padding: 10px 25px;
+            font-size: 16px;
+            background-color: #36A2EB;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button#downloadExcel:hover {
+            background-color: #2a81c2;
+        }
+    </style>
+</head>
+<body>
+    <h2>Wyniki ankiety - aktualizowane co 15 sekund</h2>
+
+    <h3>Czy pijesz kawę?</h3>
+    <canvas id="pijeszKaweChart"></canvas>
+
+    <h3>Ulubione marki kawy</h3>
+    <canvas id="markiChart"></canvas>
+
+    <h3>Ulubione rodzaje kawy</h3>
+    <canvas id="rodzajeChart"></canvas>
+
+    <h3>Liczba odpowiedzi w czasie</h3>
+    <canvas id="trendChart"></canvas>
+
+    <button id="downloadExcel">Pobierz wyniki do Excela</button>
+
+    <script>
+        // Dane przekazane z Flask
+        const pijeszKaweData = {{ data['pijesz_kawe'] | tojson }};
+        const markiRawData = {{ data['marki'] | tojson }};
+        const rodzajeRawData = {{ data['rodzaje'] | tojson }};
+        const trendData = {{ data['odpowiedzi'] | tojson }};
+
+        // Funkcje pomocnicze
+        function aggregateMarki(data) {
+            const known = ['Lavazza', 'Tchibo', 'Nescafe', 'Jacobs'];
+            let aggregated = { 'Lavazza': 0, 'Tchibo': 0, 'Nescafe': 0, 'Jacobs': 0, 'Inne': 0 };
+            for (const [marka, count] of Object.entries(data)) {
+                if (known.includes(marka)) {
+                    aggregated[marka] += count;
+                } else {
+                    aggregated['Inne'] += count;
+                }
+            }
+            return aggregated;
+        }
+
+        function aggregateRodzaje(data) {
+            const known = ['Czarna', 'Z mlekiem', 'Mrożona', 'Rozpuszczalna'];
+            let aggregated = { 'Czarna': 0, 'Z mlekiem': 0, 'Mrożona': 0, 'Rozpuszczalna': 0, 'Inne': 0 };
+            for (const [rodzaj, count] of Object.entries(data)) {
+                if (known.includes(rodzaj)) {
+                    aggregated[rodzaj] += count;
+                } else {
+                    aggregated['Inne'] += count;
+                }
+            }
+            return aggregated;
+        }
+
+        const markiData = aggregateMarki(markiRawData);
+        const rodzajeData = aggregateRodzaje(rodzajeRawData);
+
+        // Przygotowanie danych dla wykresu trendu
+        const trendLabels = Object.keys(trendData).sort();
+        const trendValues = trendLabels.map(date => trendData[date]);
+
+        // Funkcje tworzące wykresy
+        function createPieChart(ctxId, labels, data, title) {
+            const ctx = document.getElementById(ctxId).getContext('2d');
+            const total = Object.values(data).reduce((a, b) => a + b, 0);
+            return new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: Object.values(data),
+                        backgroundColor: [
+                            '#FF6384',
+                            '#36A2EB',
+                            '#FFCE56',
+                            '#4BC0C0',
+                            '#9966FF'
+                        ],
+                        borderWidth: 1,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'right' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.label}: ${context.raw}`;
+                                }
+                            }
+                        },
+                        datalabels: {
+                            color: '#fff',
+                            font: { weight: 'bold', size: 14 },
+                            formatter: (value) => {
+                                return ((value / total) * 100).toFixed(1) + '%';
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: title,
+                            font: { size: 18, weight: 'bold' }
+                        }
+                    }
+                },
+                plugins: [ChartDataLabels]
+            });
+        }
+
+        function createBarChart(ctxId, labels, data, title) {
+            const ctx = document.getElementById(ctxId).getContext('2d');
+            return new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Liczba odpowiedzi',
+                        data: Object.values(data),
+                        backgroundColor: 'rgba(255, 111, 145, 0.7)',
+                        borderColor: 'rgba(255, 111, 145, 1)',
+                        borderWidth: 1,
+                        borderRadius: 5,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: title,
+                            font: { size: 18, weight: 'bold' }
+                        },
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { precision: 0 }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createLineChart(labels, data, title) {
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            return new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Liczba odpowiedzi',
+                        data: data,
+                        fill: false,
+                        borderColor: '#36A2EB',
+                        backgroundColor: '#36A2EB',
+                        tension: 0.3,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: title,
+                            font: { size: 18 }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { precision: 0 }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Tworzenie wykresów
+        createPieChart('pijeszKaweChart', Object.keys(pijeszKaweData), pijeszKaweData, 'Czy pijesz kawę?');
+        createBarChart('markiChart', Object.keys(markiData), markiData, 'Ulubione marki kawy');
+        createBarChart('rodzajeChart', Object.keys(rodzajeData), rodzajeData, 'Ulubione rodzaje kawy');
+        createLineChart(trendLabels, trendValues, 'Liczba odpowiedzi w czasie');
+
+        // Obsługa przycisku Excel
+        document.getElementById('downloadExcel').addEventListener('click', () => {
+            window.location.href = '/export_excel';
+        });
+    </script>
+</body>
+</html>
