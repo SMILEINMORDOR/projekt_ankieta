@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Błąd</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #fff5f5;
+        }
+        .error-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 30px;
+            border: 1px solid #ff6b6b;
+            border-radius: 8px;
+            background-color: white;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #d33;
+            margin-top: 0;
+        }
+        .error-message {
+            font-size: 18px;
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #ffecec;
+            border-left: 4px solid #d33;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #36A2EB;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .back-link:hover {
+            background-color: #2a81c2;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <h1>Wystąpił błąd</h1>
+        <div class="error-message">{{ error_message }}</div>
+        <a href="{{ url_for('survey') }}" class="back-link">Powrót do strony głównej</a>
+    </div>
+</body>
+</html>
