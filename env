@@ -1,0 +1,5 @@
+DB_SERVER=ankiety.database.windows.net
+DB_NAME=ankietysql
+DB_USER=ankiety
+DB_PASSWORD=Chmury123
+FLASK_SECRET_KEY=tajny-klucz
